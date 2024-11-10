@@ -17,7 +17,6 @@ struct solicitud{
 };
 
 void agregarRegistro();
-void modificarRegistro();
 void borrarRegistro();
 void leerRegistro();
 
@@ -26,8 +25,8 @@ int main(int argc,char **argv){
     pedir.idProc = getpid();
     int msgid = msgget(0xa,IPC_EXCL|0600);
     int eleccion;
-    printf("msgiq: %i",msgid);
     while(1){
+        printf("************************\n");
         printf("Bienvenido Sr. cliente\n");
         printf("1) Modificar archivo\n");
         printf("2) Eliminar archivo\n");
@@ -49,9 +48,10 @@ int main(int argc,char **argv){
                 agregarRegistro(&pedir);
                 break;
             case 2:
+                borrarRegistro(&pedir);
                 break;
             case 3:
-                borrarRegistro(&pedir);
+                leerRegistro(&pedir);
                 break;
             case 4:
                 break;
@@ -84,3 +84,6 @@ void borrarRegistro(struct solicitud *pedido){
     snprintf(pedido->descripcion,CARACTER_MAX,"eliminar");
 }
 
+void leerRegistro(struct solicitud *pedido){
+    snprintf(pedido->descripcion,CARACTER_MAX,"leer");
+}

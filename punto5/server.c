@@ -22,13 +22,15 @@ struct registro{
     char descripcion[LARGO_MENSAJE_MAX];
 };
 
+int msgid;
+
 //hadler de SIGINT
 void handlerSIGINT(int);
 
 int main(int arcg,char **argv){
     signal(SIGINT,handlerSIGINT);
     //creacion de la cola de mensajes (ver cola con el comando IPCS)
-    int msgid = msgget(0xa,IPC_CREAT|0600);
+    msgid = msgget(0xa,IPC_CREAT|0600);
     printf("el msgiq es %i\n",msgid);
     if(msgid == -1){
         printf("Error al crear Cola de mensajes");
@@ -62,7 +64,6 @@ int main(int arcg,char **argv){
         }
         //<pid>,<registro>,<descripcion>
         printf("Server: <%d>,<%i>,<%s>\n",pedido.idProc,pedido.selecRegistro,pedido.descripcion);
-        printf("registro recibido: %i\n",pedido.selecRegistro);
         fseek(archivo,pedido.selecRegistro*sizeof(struct registro),SEEK_SET);
         fread(&reg,sizeof(struct registro),1,archivo);
         if(strcmp(pedido.descripcion,"eliminar")==0){
@@ -78,11 +79,24 @@ int main(int arcg,char **argv){
             memset(pedido.descripcion,'\0',LARGO_MENSAJE_MAX);
             printf("Server: registro %i, cambiado por cliente %i\n",pedido.selecRegistro,pedido.idProc);
             if(reg.estado == 2){
-                snprintf(pedido.descripcion,LARGO_MENSAJE_MAX,"eliminado correctamente");
+                snprintf(pedido.descripcion,LARGO_MENSAJE_MAX,"registro %i esta vacio",pedido.selecRegistro);
                 msgsnd(msgid,&pedido,sizeof(struct mensaje)-sizeof(long),0);
             }
-        }else if(strcmp(pedido.descripcion,"leer")){
-            
+        }else if(strcmp(pedido.descripcion,"leer") == 0){
+            printf("Server: el cliente:%d, lee registro %i\n",pedido.idProc,pedido.selecRegistro);
+            printf("Server: <%d>,<%i>,<%s>\n",pedido.idProc,pedido.selecRegistro,pedido.descripcion);
+            pedido.tipo = pedido.idProc;
+            pedido.retorno = 1;
+            strcpy(pedido.descripcion,reg.descripcion);
+            msgsnd(msgid,&pedido,sizeof(struct mensaje)-sizeof(long),0);
+        }else{
+            reg.estado = 1;
+            pedido.tipo = pedido.idProc; 
+            pedido.retorno = 1;
+            printf("Server: el cliente:%d, cambia registro %i\n",pedido.idProc,pedido.selecRegistro);
+            printf("Server: <%d>,<%i>,<escribir: %s>\n",pedido.idProc,pedido.selecRegistro,pedido.descripcion);
+            strcpy(reg.descripcion,pedido.descripcion);
+            msgsnd(msgid,&pedido,sizeof(struct mensaje)-sizeof(long),0);
         }
 
         fseek(archivo,sizeof(struct registro)*pedido.selecRegistro,SEEK_SET);
@@ -94,4 +108,7 @@ int main(int arcg,char **argv){
 
 void handlerSIGINT(int signal){
     printf("se ejecuto la senial %i\n",signal);
+    msgctl(msgid,IPC_RMID,0);
+    printf("cola de mensajes eliminada\n");
+    exit(0);
 }
